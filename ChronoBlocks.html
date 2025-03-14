@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoBlocks</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #container {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-gap: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            max-width: 600px; /* Limit width for better readability */
+            width: 90%; /* Responsive width */
+        }
+
+        #current-time {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #message {
+            font-size: 1.5em;
+            color: #555;
+        }
+
+        #settings {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #settings h2 {
+            margin-top: 0;
+            font-size: 1.2em;
+            color: #444;
+        }
+
+        .time-block-setting {
+            margin-bottom: 10px;
+            display: grid; /* Use grid for the settings too */
+            grid-template-columns: auto 1fr auto 1fr; /* Columns for labels and inputs */
+            grid-gap: 5px;
+            align-items: center; /* Vertically align items */
+        }
+		.time-block-setting > * {
+            padding: 5px; /* Consistent padding */
+        }
+
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="time"], input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%; /* Take up full width of their grid cell */
+        }
+
+
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+		button:hover {
+            background-color: #367c39; /* Darker green on hover */
+        }
+        #reset-button {
+            background-color: #f44336; /* Red for reset */
+        }
+		#reset-button:hover {
+            background-color: #d32f2f; /* Darker red on hover*/
+        }
+
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="current-time"></div>
+        <div id="message"></div>
+
+        <div id="settings">
+            <h2>Settings</h2>
+            <div id="time-block-settings">
+                </div>
+            <button id="save-button">Save Settings</button>
+            <button id="reset-button">Reset to Defaults</button>
+        </div>
+    </div>
+
+    <script>
+        // Default time blocks (your original schedule)
+        const defaultTimeBlocks = [
+            { start: "23:00", end: "00:00", message: "Time to get ready for bed!" },
+            { start: "00:00", end: "03:00", message: "Time to code!" },
+            { start: "03:00", end: "08:00", message: "Time to sleep!" },
+            { start: "08:00", end: "16:20", message: "Time to start the day!" },
+            { start: "16:20", end: "17:20", message: "Time for lunch!" }
+        ];
+
+        let timeBlocks = [];
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem("chronoBlocksSettings");
+            if (savedSettings) {
+                timeBlocks = JSON.parse(savedSettings);
+            } else {
+                timeBlocks = [...defaultTimeBlocks]; // Use a copy, not a direct reference
+            }
+            renderSettings();
+        }
+
+        function saveSettings() {
+            // Collect the values from the input fields
+            const settingInputs = document.querySelectorAll('.time-block-setting');
+            const newTimeBlocks = [];
+
+            settingInputs.forEach((setting, index) => {
+                const startInput = setting.querySelector('.start-time');
+                const endInput = setting.querySelector('.end-time');
+                const messageInput = setting.querySelector('.message');
+
+				//Basic validation
+				if(!startInput.value || !endInput.value || !messageInput.value){
+					alert("Please fill out all the fields for each time block.");
+					return; // Stop if any field is empty.
+				}
+
+                newTimeBlocks.push({
+                    start: startInput.value,
+                    end: endInput.value,
+                    message: messageInput.value
+                });
+            });
+			//Check validation
+			if(newTimeBlocks.length !== settingInputs.length){
+				return;
+			}
+            timeBlocks = newTimeBlocks;
+            localStorage.setItem("chronoBlocksSettings", JSON.stringify(timeBlocks));
+            updateDisplay(); // Update immediately to reflect changes
+        }
+		function resetToDefaults() {
+           if (confirm("Are you sure you want to reset to the default settings?")) {
+                timeBlocks = [...defaultTimeBlocks]; // Use the spread operator (...)
+                localStorage.removeItem("chronoBlocksSettings"); //Clear local storage
+                renderSettings(); //Update the form to show defaults.
+                updateDisplay();//Update display
+            }
+        }
+
+        function renderSettings() {
+            const settingsContainer = document.getElementById('time-block-settings');
+            settingsContainer.innerHTML = ''; // Clear existing settings
+
+            timeBlocks.forEach((block, index) => {
+                const settingDiv = document.createElement('div');
+                settingDiv.classList.add('time-block-setting');
+
+                settingDiv.innerHTML = `
+                    <label for="start-time-${index}">Start:</label>
+                    <input type="time" id="start-time-${index}" class="start-time" value="${block.start}">
+                    <label for="end-time-${index}">End:</label>
+                    <input type="time" id="end-time-${index}" class="end-time" value="${block.end}">
+                    <label for="message-${index}">Message:</label>
+                    <input type="text" id="message-${index}" class="message" value="${block.message}">
+                `;
+                settingsContainer.appendChild(settingDiv);
+            });
+        }
+
+
+        function displayTimeAndMessage(message) {
+            document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
+            document.getElementById('message').textContent = message;
+            alert(message); // Keep the alert for alarms
+        }
+
+       function scheduleAlarms() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+
+            for (const block of timeBlocks) {
+                if (currentTimeStr === block.start) {
+                    displayTimeAndMessage(block.message);
+                    break; // Important: Only trigger one alarm at a time
+                }
+            }
+
+            setTimeout(scheduleAlarms, 60000); // Check for alarms every minute
+        }
+
+        function updateDisplay() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+            let message = "Free time!"; // Default message
+
+            for (const block of timeBlocks) {
+                // Handle time wrapping (e.g., 23:00 to 01:00)
+                if (block.start <= block.end) { // Normal case
+                    if (currentTimeStr >= block.start && currentTimeStr < block.end) {
+                        message = block.message;
+                        break;
+                    }
+                } else { // Wraps around midnight
+                    if (currentTimeStr >= block.start || currentTimeStr < block.end) {
+                        message = block.message;
+                        break;
+                    }
+                }
+            }
+
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            document.getElementById('message').textContent = message;
+            setTimeout(updateDisplay, 1000); // Update display every second
+        }
+
+
+        // Event Listeners
+        document.getElementById('save-button').addEventListener('click', saveSettings);
+		document.getElementById('reset-button').addEventListener('click', resetToDefaults);
+
+        // Initialize
+        loadSettings();
+        scheduleAlarms();
+        updateDisplay();
+    </script>
+</body>
+</html>
